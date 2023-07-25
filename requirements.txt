@@ -1,0 +1,15 @@
+click
+eql
+elasticsearch
+jsl
+jsonschema
+marko
+marshmallow
+marshmallow_dataclass
+marshmallow_jsonschema
+marshmallow_union
+pytoml
+semver
+toml
+typeguard
+xlsxwriter
