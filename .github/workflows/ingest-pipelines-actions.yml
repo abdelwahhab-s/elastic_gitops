@@ -1,0 +1,31 @@
+name: ingest-pipelines-github-action
+run-name: ${{ github.actor }} upload pipelines
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ingest-pipelines/**.json
+jobs:
+  push-updates-prod:
+
+    runs-on: ubuntu-latest
+    steps:
+      
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Retrieve changed pipeline files
+        id: retrieve_changes_step
+        run: |
+            git fetch --depth=1 origin +refs/heads/main
+            echo "changed_pipelines=$(echo $(git diff --name-only ${{ github.event.before }} ${{ github.sha }}) | tr '\n' ' ')" >> $GITHUB_OUTPUT
+            
+      - name: Process changed pipeline files
+        run: |
+          for file in ${{steps.retrieve_changes_step.outputs.changed_pipelines }}; do
+            echo "Processing: $file"
+            curl -XPUT "${{ secrets.ES_URL }}/_ingest/pipeline/$(basename "$file" .json)" -u ${{ secrets.USER_NAME }}:${{ secrets.PASSWORD }} -H "Content-Type: application/json" -d @$file
+          done

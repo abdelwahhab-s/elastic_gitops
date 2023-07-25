@@ -1,0 +1,39 @@
+name: detection-rules-github-actions
+run-name: ${{ github.actor }} upload rules
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - rules/**.toml
+jobs:
+  push-updates-prod:
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Clone Elastic rules repository
+        run: git clone https://github.com/elastic/detection-rules.git
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Retrieve changed pipeline files
+        id: retrieve_changes_step
+        run: |
+            git fetch --depth=1 origin +refs/heads/main
+            echo "changed_rules=$(echo $(git diff --name-only ${{ github.event.before }} ${{ github.sha }}) | tr '\n' ' ')" >> $GITHUB_OUTPUT
+      
+      - name: Process changed files
+        run: |
+          cd detection-rules
+          for file in ${{steps.retrieve_changes_step.outputs.changed_rules }}; do
+            echo "Processing: $file"
+            python3 -m detection_rules kibana --provider-name cloud-basic --kibana-user ${{ secrets.USER_NAME }} --kibana-password ${{ secrets.PASSWORD }} --kibana-url ${{ secrets.KIBANA_URL }} upload-rule --rule-file ${GITHUB_WORKSPACE}/$file
+          done
